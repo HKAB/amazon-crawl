@@ -3,6 +3,12 @@ import scrapy
 from utils import removeSpaceAndStrip
 from amazon.items import AmazonItem
 import random
+from enum import Enum
+
+class Mode(Enum):
+    KEYWORD = 1
+    LINK = 2
+        
 
 class AmazonSpider(scrapy.Spider):
     name = 'amazon'
@@ -20,19 +26,27 @@ class AmazonSpider(scrapy.Spider):
     ]
 
     def start_requests(self):
-        if self.link == "":
-            url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
-            scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
-            print("headers: " + self.headers)
-            for url in urls:
-                yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
-        else:
+        try:
             url = self.link
+            mode = Mode.LINK
+        except AttributeError:
+            mode = Mode.KEYWORD
+
+        print(mode)
+
+        if (mode == Mode.KEYWORD):
+            url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
+            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
+            # for url in urls:
+            #     yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
+        else:
+            # url = self.link
             yield scrapy.Request(url=url, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
             # return ######
 
     def parse(self, response):
-        asins = response.xpath("//*[contains(@id, 'result')]/@data-asin")
+        asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
+        print(asins)
         for asin in asins:
             if (self.count < self.number):
                 url_asin = "https://www.amazon.com/dp/" + asin;
@@ -80,6 +94,8 @@ class AmazonSpider(scrapy.Spider):
             item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
             item["Position"] = "0"
 
+            self.count++
+            
             yield item
         else:
             yield
