@@ -32,8 +32,6 @@ class AmazonSpider(scrapy.Spider):
         except AttributeError:
             mode = Mode.KEYWORD
 
-        print(mode)
-
         if (mode == Mode.KEYWORD):
             url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
             yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
@@ -45,6 +43,7 @@ class AmazonSpider(scrapy.Spider):
             # return ######
 
     def parse(self, response):
+        print(response.xpath('//*[@id="glow-ingress-line2"]/text()'))
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
         print(asins)
         for asin in asins:
@@ -53,7 +52,7 @@ class AmazonSpider(scrapy.Spider):
                 yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
             else:
                 break
-        next_page = response.xpath('//*[@id="pagnNextLink"]').extract_first()
+        next_page = response.xpath('//*[@id="pagnNextLink"]/@href').extract_first()
         if (next_page is not None) and (self.count < self.number):
             yield response.follow(next_page, callback=self.parse)
 
@@ -66,13 +65,36 @@ class AmazonSpider(scrapy.Spider):
                 temp_short_description = temp_short_description + removeSpaceAndStrip(feature_bullet.xpath("text()").extract_first()) + " | "
             
             temp_price = response.xpath('//*[@id="priceblock_ourprice"]/text()').extract_first()
-            if len(temp_price) > 5:
-                temp_price = temp_price.split(" - ")[0]
+            if temp_price is not None:
+                if len(temp_price) > 5:
+                    temp_price = temp_price.split(" - ")[0]
+            else:
+                temp_price = "can't get"
 
+            # Handle description
             try:
-                temp_description = removeSpaceAndStrip(response.xpath('//*[@id="productDescription"]/p/text()').extract_first())
+                temp_description = ''
+                e_temp_descriptions = response.xpath('//*[@id="productDescription"]/p/text()').extract()
+                # other_form_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
+                print(e_temp_descriptions)
+                if len(e_temp_descriptions) >= 2:
+                    for e_temp_description in e_temp_descriptions:
+                        temp_description = temp_description + e_temp_description + "\n"
+                elif (len(e_temp_descriptions) == 1):
+                    temp_description = e_temp_descriptions[0]
+                # elif len(other_form_descriptions) > 2:
+                else:
+                    e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
+                    if len(e_temp_descriptions) >= 2:
+                        for e_temp_description in e_temp_descriptions:
+                            temp_description = temp_description + e_temp_description + "\n"
+                    else:
+                        e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/ul/li/span/text()').extract()
+                        for e_temp_description in e_temp_descriptions:
+                            temp_description = temp_description + e_temp_description + "\n"
+                
             except Exception as e:
-                temp_description = ""
+                temp_description = "Nothing"
 
             item = AmazonItem()
             item["Identifier"] = self.count
@@ -94,8 +116,8 @@ class AmazonSpider(scrapy.Spider):
             item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
             item["Position"] = "0"
 
-            self.count++
-            
+            self.count+=1
+
             yield item
         else:
             yield
