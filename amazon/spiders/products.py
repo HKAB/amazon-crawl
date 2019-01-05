@@ -1,13 +1,13 @@
 
 import scrapy
-from utils import removeSpaceAndStrip
+from utils import removeSpaceAndStrip, readFile
 from amazon.items import AmazonItem
 import random
 from enum import Enum
 
 class Mode(Enum):
     KEYWORD = 1
-    LINKS = 2
+    FILE = 2
         
 
 class AmazonSpider(scrapy.Spider):
@@ -27,8 +27,8 @@ class AmazonSpider(scrapy.Spider):
 
     def start_requests(self):
         try:
-            url = self.links
-            mode = Mode.LINKS
+            file = self.file
+            mode = Mode.FILE
         except AttributeError:
             mode = Mode.KEYWORD
 
@@ -39,8 +39,9 @@ class AmazonSpider(scrapy.Spider):
             #     yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
         else:
             # url = self.link
-            self.number = len(url.split("|"))
-            for link in url.split("|"):
+            links = readFile(file)
+            self.number = len(links)
+            for link in links:
                 if "http" in link:
                     yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
                 else:
