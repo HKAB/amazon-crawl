@@ -7,7 +7,7 @@ from enum import Enum
 
 class Mode(Enum):
     KEYWORD = 1
-    LINK = 2
+    LINKS = 2
         
 
 class AmazonSpider(scrapy.Spider):
@@ -27,8 +27,8 @@ class AmazonSpider(scrapy.Spider):
 
     def start_requests(self):
         try:
-            url = self.link
-            mode = Mode.LINK
+            url = self.links
+            mode = Mode.LINKS
         except AttributeError:
             mode = Mode.KEYWORD
 
@@ -39,7 +39,12 @@ class AmazonSpider(scrapy.Spider):
             #     yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
         else:
             # url = self.link
-            yield scrapy.Request(url=url, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
+            self.number = len(url.split("|"))
+            for link in url.split("|"):
+                if "http" in link:
+                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
+                else:
+                    print("INVALID LINK: " + link)
             # return ######
 
     def parse(self, response):
