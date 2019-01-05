@@ -1,6 +1,6 @@
-
+    
 import scrapy
-from utils import removeSpaceAndStrip, readFile
+from utils import removeSpaceAndStrip, readFile, notifError, notifSuccess
 from amazon.items import AmazonItem
 import random
 from enum import Enum
@@ -45,13 +45,11 @@ class AmazonSpider(scrapy.Spider):
                 if "http" in link:
                     yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
                 else:
-                    print("INVALID LINK: " + link)
+                    notifError("INVALID LINK: " + link)
             # return ######
 
     def parse(self, response):
-        print(response.xpath('//*[@id="glow-ingress-line2"]/text()'))
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
-        print(asins)
         for asin in asins:
             if (self.count < self.number):
                 url_asin = "https://www.amazon.com/dp/" + asin;
@@ -65,7 +63,6 @@ class AmazonSpider(scrapy.Spider):
     def parse_product(self, response):
         if (self.count < self.number):
             feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
-            print(feature_bullets)
             temp_short_description = ""
             for feature_bullet in feature_bullets:
                 temp_short_description = temp_short_description + removeSpaceAndStrip(feature_bullet.xpath("text()").extract_first()) + " | "
@@ -82,7 +79,6 @@ class AmazonSpider(scrapy.Spider):
                 temp_description = ''
                 e_temp_descriptions = response.xpath('//*[@id="productDescription"]/p/text()').extract()
                 # other_form_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
-                print(e_temp_descriptions)
                 if len(e_temp_descriptions) >= 2:
                     for e_temp_description in e_temp_descriptions:
                         temp_description = temp_description + e_temp_description + "\n"
@@ -123,7 +119,7 @@ class AmazonSpider(scrapy.Spider):
             item["Position"] = "0"
 
             self.count+=1
-
+            notifSuccess("Success " + response.url.split("/")[-1])
             yield item
         else:
             yield
