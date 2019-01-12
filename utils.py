@@ -7,11 +7,5 @@ def readFile(file):
 	data = f.read()
 	return data.split('\n')
 
-def notifError(n):
-	print("----------------------------")
-	print("\033[91m" + n + "\033[00m")
-	print("----------------------------")
-def notifSuccess(n):
-	print("----------------------------")
-	print("\033[92m" + n + "\033[00m")
-	print("----------------------------")
+def notif():
+	print(n)

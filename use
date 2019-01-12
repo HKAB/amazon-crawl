@@ -1,0 +1,1 @@
+scrapy crawl amazon -a keyword="T-shirt" -s CLOSESPIDER_ITEMCOUNT=10

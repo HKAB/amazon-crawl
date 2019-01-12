@@ -1,6 +1,6 @@
     
 import scrapy
-from utils import removeSpaceAndStrip, readFile, notifError, notifSuccess
+from utils import removeSpaceAndStrip, readFile, notif
 from amazon.items import AmazonItem
 import random
 from enum import Enum
@@ -40,86 +40,80 @@ class AmazonSpider(scrapy.Spider):
         else:
             # url = self.link
             links = readFile(file)
-            self.number = len(links)
             for link in links:
                 if "http" in link:
                     yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
                 else:
-                    notifError("INVALID LINK: " + link)
+                    notif("INVALID LINK: " + link)
             # return ######
 
     def parse(self, response):
+        # print(self.number)
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
         for asin in asins:
-            if (self.count < self.number):
-                url_asin = "https://www.amazon.com/dp/" + asin;
-                yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
-            else:
-                break
+            url_asin = "https://www.amazon.com/dp/" + asin;
+            yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
         next_page = response.xpath('//*[@id="pagnNextLink"]/@href').extract_first()
-        if (next_page is not None) and (self.count < self.number):
+        if (next_page is not None):
             yield response.follow(next_page, callback=self.parse)
 
     def parse_product(self, response):
-        if (self.count < self.number):
-            feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
-            temp_short_description = ""
-            for feature_bullet in feature_bullets:
-                temp_short_description = temp_short_description + removeSpaceAndStrip(feature_bullet.xpath("text()").extract_first()) + " | "
-            
-            temp_price = response.xpath('//*[@id="priceblock_ourprice"]/text()').extract_first()
-            if temp_price is not None:
-                if len(temp_price) > 5:
-                    temp_price = temp_price.split(" - ")[0]
-            else:
-                temp_price = "can't get"
+        feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
+        temp_short_description = ""
+        for feature_bullet in feature_bullets:
+            temp_short_description = temp_short_description + removeSpaceAndStrip(feature_bullet.xpath("text()").extract_first()) + " | "
+        
+        temp_price = response.xpath('//*[@id="priceblock_ourprice"]/text()').extract_first()
+        if temp_price is not None:
+            if len(temp_price) > 5:
+                temp_price = temp_price.split(" - ")[0]
+        else:
+            temp_price = "can't get"
 
-            # Handle description
-            try:
-                temp_description = ''
-                e_temp_descriptions = response.xpath('//*[@id="productDescription"]/p/text()').extract()
-                # other_form_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
+        # Handle description
+        try:
+            temp_description = ''
+            e_temp_descriptions = response.xpath('//*[@id="productDescription"]/p/text()').extract()
+            # other_form_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
+            if len(e_temp_descriptions) >= 2:
+                for e_temp_description in e_temp_descriptions:
+                    temp_description = temp_description + e_temp_description + "\n"
+            elif (len(e_temp_descriptions) == 1):
+                temp_description = e_temp_descriptions[0]
+            # elif len(other_form_descriptions) > 2:
+            else:
+                e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
                 if len(e_temp_descriptions) >= 2:
                     for e_temp_description in e_temp_descriptions:
                         temp_description = temp_description + e_temp_description + "\n"
-                elif (len(e_temp_descriptions) == 1):
-                    temp_description = e_temp_descriptions[0]
-                # elif len(other_form_descriptions) > 2:
                 else:
-                    e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
-                    if len(e_temp_descriptions) >= 2:
-                        for e_temp_description in e_temp_descriptions:
-                            temp_description = temp_description + e_temp_description + "\n"
-                    else:
-                        e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/ul/li/span/text()').extract()
-                        for e_temp_description in e_temp_descriptions:
-                            temp_description = temp_description + e_temp_description + "\n"
-                
-            except Exception as e:
-                temp_description = "Nothing"
+                    e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/ul/li/span/text()').extract()
+                    for e_temp_description in e_temp_descriptions:
+                        temp_description = temp_description + e_temp_description + "\n"
+            
+        except Exception as e:
+            temp_description = "Nothing"
 
-            item = AmazonItem()
-            item["Identifier"] = self.count
-            item["Type"] = "external"
-            item["SKU"] = response.url.split("/")[-1]
-            item["Name"] = response.xpath('//*[@id="productTitle"]/text()').extract_first().strip()
-            item["Published"] = "1"
-            item["IsFeatured"] = "0"
-            item["VisibilityInCatalogue"] = "visible"
-            item["ShortDescription"] = temp_short_description
-            item["Description"] = temp_description
-            item["TaxStatus"] = "taxable"
-            item["InStock"] = "100"
-            item["AllowCustomerReviews"] = "1"
-            item["Price"] = temp_price
-            item["Categories"] = "Fashion"
-            item["Tags"] = ""
-            item["Images"] = response.xpath('//*[@id="landingImage"]/@data-old-hires').extract_first()
-            item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
-            item["Position"] = "0"
+        item = AmazonItem()
+        item["Identifier"] = self.count
+        item["Type"] = "external"
+        item["SKU"] = response.url.split("/")[-1]
+        item["Name"] = response.xpath('//*[@id="productTitle"]/text()').extract_first().strip()
+        item["Published"] = "1"
+        item["IsFeatured"] = "0"
+        item["VisibilityInCatalogue"] = "visible"
+        item["ShortDescription"] = temp_short_description
+        item["Description"] = temp_description
+        item["TaxStatus"] = "taxable"
+        item["InStock"] = "100"
+        item["AllowCustomerReviews"] = "1"
+        item["Price"] = temp_price
+        item["Categories"] = "Fashion"
+        item["Tags"] = ""
+        item["Images"] = response.xpath('//*[@id="landingImage"]/@data-old-hires').extract_first()
+        item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
+        item["Position"] = "0"
 
-            self.count+=1
-            notifSuccess("Success " + response.url.split("/")[-1])
-            yield item
-        else:
-            yield
+        self.count+=1
+        notif("Success " + response.url.split("/")[-1])
+        yield item

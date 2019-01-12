@@ -4,7 +4,7 @@
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: https://doc.scrapy.org/en/latest/topics/item-pipeline.html
-# from scrapy import signals
+from scrapy.settings import Settings
 from scrapy.exporters import CsvItemExporter
 
 class AmazonPipeline(object):
@@ -20,5 +20,8 @@ class AmazonPipeline(object):
 		file = self.files.pop(spider)
 		file.close()
 	def process_item(self, item, spider):
-		self.exporter.export_item(item)
+		max_product = spider.settings.get("CLOSESPIDER_ITEMCOUNT")
+		if int(item["Identifier"]) < int(max_product):
+			print(str(item["Identifier"]) + " " + str(max_product))
+			self.exporter.export_item(item)
 		return item
