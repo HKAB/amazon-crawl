@@ -7,5 +7,5 @@ def readFile(file):
 	data = f.read()
 	return data.split('\n')
 
-def notif():
+def notif(n):
 	print(n)
