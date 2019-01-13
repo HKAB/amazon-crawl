@@ -65,7 +65,7 @@ class AmazonSpider(scrapy.Spider):
         for feature_bullet in feature_bullets:
             temp_short_description = temp_short_description + removeSpaceAndStrip(feature_bullet.xpath("text()").extract_first()) + " | "
         
-        temp_price = response.xpath('//*[@id="priceblock_ourprice"]/text()').extract_first()
+        temp_price = response.xpath('//span[@id="priceblock_ourprice"]/text()').extract_first()
         if temp_price is not None:
             if len(temp_price) > 5:
                 temp_price = temp_price.split(" - ")[0]
