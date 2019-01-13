@@ -5,9 +5,6 @@ from amazon.items import AmazonItem
 import random
 from enum import Enum
 
-import requests
-from lxml import html
-
 class Mode(Enum):
     KEYWORD = 1
     FILE = 2
