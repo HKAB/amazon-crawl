@@ -1,9 +1,12 @@
     
 import scrapy
-from utils import removeSpaceAndStrip, readFile, notif
+from utils import removeSpaceAndStrip, readFile, notif, getCookiesInUS
 from amazon.items import AmazonItem
 import random
 from enum import Enum
+
+import requests
+from lxml import html
 
 class Mode(Enum):
     KEYWORD = 1
@@ -25,16 +28,18 @@ class AmazonSpider(scrapy.Spider):
             "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36",
     ]
 
+    cookies = getCookiesInUS()
+
     def start_requests(self):
         try:
             file = self.file
-            mode = Mode.FILE
+            mode = Mode.IFLE
         except AttributeError:
             mode = Mode.KEYWORD
 
         if (mode == Mode.KEYWORD):
             url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
-            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
+            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)}, cookies=cookies)
             # for url in urls:
             #     yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
         else:
@@ -42,7 +47,7 @@ class AmazonSpider(scrapy.Spider):
             links = readFile(file)
             for link in links:
                 if "http" in link:
-                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
+                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=cookies)
                 else:
                     notif("INVALID LINK: " + link)
             # return ######
@@ -52,10 +57,10 @@ class AmazonSpider(scrapy.Spider):
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
         for asin in asins:
             url_asin = "https://www.amazon.com/dp/" + asin;
-            yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)})
+            yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=cookies)
         next_page = response.xpath('//*[@id="pagnNextLink"]/@href').extract_first()
         if (next_page is not None):
-            yield response.follow(next_page, callback=self.parse)
+            yield response.follow(next_page, callback=self.parse, cookies=cookies)
 
     def parse_product(self, response):
         feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
@@ -68,8 +73,9 @@ class AmazonSpider(scrapy.Spider):
             if len(temp_price) > 5:
                 temp_price = temp_price.split(" - ")[0]
         else:
-            temp_price = "can't get"
-
+            temp_price = response.xpath('//*[@id="priceblock_snsprice_Based"]/span/text()').extract_first()
+            if temp_price is None:
+                temp_price = "can't get"
         # Handle description
         try:
             temp_description = ''
