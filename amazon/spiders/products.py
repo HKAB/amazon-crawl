@@ -36,7 +36,7 @@ class AmazonSpider(scrapy.Spider):
 
         if (mode == Mode.KEYWORD):
             url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
-            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)}, cookies=cookies)
+            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
             # for url in urls:
             #     yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
         else:
@@ -44,7 +44,7 @@ class AmazonSpider(scrapy.Spider):
             links = readFile(file)
             for link in links:
                 if "http" in link:
-                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=cookies)
+                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
                 else:
                     notif("INVALID LINK: " + link)
             # return ######
@@ -54,10 +54,10 @@ class AmazonSpider(scrapy.Spider):
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
         for asin in asins:
             url_asin = "https://www.amazon.com/dp/" + asin;
-            yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=cookies)
+            yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
         next_page = response.xpath('//*[@id="pagnNextLink"]/@href').extract_first()
         if (next_page is not None):
-            yield response.follow(next_page, callback=self.parse, cookies=cookies)
+            yield response.follow(next_page, callback=self.parse, cookies=self.cookies)
 
     def parse_product(self, response):
         feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
