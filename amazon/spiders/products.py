@@ -30,7 +30,7 @@ class AmazonSpider(scrapy.Spider):
     def start_requests(self):
         try:
             file = self.file
-            mode = Mode.IFLE
+            mode = Mode.FILE
         except AttributeError:
             mode = Mode.KEYWORD
 
