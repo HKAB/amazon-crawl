@@ -42,6 +42,7 @@ class AmazonSpider(scrapy.Spider):
         else:
             # url = self.link
             links = readFile(file)
+            print("number of products:" + str(len(links)))
             for link in links:
                 if "http" in link:
                     yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
@@ -60,6 +61,15 @@ class AmazonSpider(scrapy.Spider):
             yield response.follow(next_page, callback=self.parse, cookies=self.cookies)
 
     def parse_product(self, response):
+        try:
+            title = response.xpath('//span[@id="productTitle"]/text()').extract_first().strip()    
+        except Exception as e:
+            with open("test.html", "w+") as f:
+                f.write(response)
+                raise e
+                # print(response)
+        
+
         feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
         temp_short_description = ""
         for feature_bullet in feature_bullets:
@@ -101,7 +111,7 @@ class AmazonSpider(scrapy.Spider):
         item["Identifier"] = self.count
         item["Type"] = "external"
         item["SKU"] = response.url.split("/")[-1]
-        item["Name"] = response.xpath('//*[@id="productTitle"]/text()').extract_first().strip()
+        item["Name"] = title
         item["Published"] = "1"
         item["IsFeatured"] = "0"
         item["VisibilityInCatalogue"] = "visible"

@@ -20,8 +20,5 @@ class AmazonPipeline(object):
 		file = self.files.pop(spider)
 		file.close()
 	def process_item(self, item, spider):
-		max_product = spider.settings.get("CLOSESPIDER_ITEMCOUNT")
-		if int(item["Identifier"]) < int(max_product):
-			print(str(item["Identifier"]) + " " + str(max_product))
-			self.exporter.export_item(item)
+		self.exporter.export_item(item)
 		return item
