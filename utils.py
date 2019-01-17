@@ -1,4 +1,5 @@
 import requests
+import string
 # from lxml import html
 
 def removeSpaceAndStrip(s):
@@ -10,7 +11,7 @@ def readFile(file):
 	return data.split('\n')
 
 def notif(n):
-	print("[INFO] " + n)
+	print("[ INFO] " + n)
 
 def getCookiesInUS():
 	payload = {"locationType": "LOCATION_INPUT", "zipCode": 10010, "storeContext": "generic", "deviceType":"web", "pageType":"Gateway", "actionSource":"glow"}
@@ -18,3 +19,13 @@ def getCookiesInUS():
 	r = requests.post("https://www.amazon.com/gp/delivery/ajax/address-change.html", data=payload, headers=headers)
 	
 	return requests.utils.dict_from_cookiejar(r.cookies)
+def isASCIIString(string):
+	try:
+		for char in string:
+			char.decode("ascii")
+	except UnicodeDecodeError as e:
+		return False
+	return True
+
+def printableString(s):
+	return ''.join(filter(lambda x: x in string.printable, s))

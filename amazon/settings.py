@@ -62,6 +62,8 @@ EXTENSIONS = {
    'scrapy.extensions.closespider.CloseSpider': 1,
 }
 
+HTTPERROR_ALLOWED_CODES = [404]
+
 # CLOSESPIDER_ITEMCOUNT = 10
 
 # Configure item pipelines

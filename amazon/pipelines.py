@@ -6,10 +6,12 @@
 # See: https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from scrapy.settings import Settings
 from scrapy.exporters import CsvItemExporter
+from utils import isASCIIString
 
 class AmazonPipeline(object):
 	def __init__(self):
 		self.files = {}
+		self.item_fail = [["External URL", "Status"]]
 	def open_spider(self, spider):
 		file_csv = open('%s_items.csv' % spider.name, 'w+b')
 		self.files[spider] = file_csv
@@ -19,6 +21,29 @@ class AmazonPipeline(object):
 		self.exporter.finish_exporting()
 		file = self.files.pop(spider)
 		file.close()
+		import csv
+		fields = ["Identifier", "Type", "SKU", "Name", "Published", "Is Featured", "Visibility In Catalogue", "Short Description", "Description", "Tax tatus", "In Stock", "Allow Customer Reviews", "Price", "Categories", "Tags", "Images", "External URL", "Position"]
+		with open('%s_items.csv' % spider.name, 'r') as f_read:
+			reader = csv.reader(f_read)
+			data = list(reader)
+			if len(data) > 0:
+				data[0] = fields
+
+		with open('%s_items.csv' % spider.name, 'w+') as f_write:
+			writer = csv.writer(f_write)
+			writer.writerows(data)
+
+		with open('%s_items_fail.csv' % spider.name, 'w+') as f_write_fail:
+			writer = csv.writer(f_write_fail)
+			print("item_fail: " + str(self.item_fail))
+			writer.writerows(self.item_fail)
+
+		f_read.close()
+		f_write.close()
+		f_write_fail.close()
 	def process_item(self, item, spider):
-		self.exporter.export_item(item)
+		if (not isASCIIString(item["Name"])) or (item["Name"] == "CAPTCHA") or (item["Name"] == "404 Not Found") or (item["Price"] == "can't get"):
+			self.item_fail.append(item.values())
+		else:
+			self.exporter.export_item(item)
 		return item

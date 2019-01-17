@@ -1,6 +1,6 @@
     
 import scrapy
-from utils import removeSpaceAndStrip, readFile, notif, getCookiesInUS
+from utils import removeSpaceAndStrip, readFile, notif, getCookiesInUS, printableString
 from amazon.items import AmazonItem
 import random
 from enum import Enum
@@ -34,99 +34,98 @@ class AmazonSpider(scrapy.Spider):
         except AttributeError:
             mode = Mode.KEYWORD
 
+        header = random.choice(self.headers)
+
         if (mode == Mode.KEYWORD):
             url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
-            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
-            # for url in urls:
-            #     yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": random.choice(self.headers)})
+            notif(header)
+            yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": header}, cookies=self.cookies)
         else:
-            # url = self.link
             links = readFile(file)
-            print("number of products:" + str(len(links)))
+            notif(header)
+            header = random.choice(self.headers)
             for link in links:
                 if "http" in link:
-                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
+                    yield scrapy.Request(url=link, callback=self.parse_product, headers={"user-agent": header}, cookies=self.cookies)
                 else:
                     notif("INVALID LINK: " + link)
-            # return ######
 
     def parse(self, response):
-        # print(self.number)
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
         for asin in asins:
             url_asin = "https://www.amazon.com/dp/" + asin;
             yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
         next_page = response.xpath('//*[@id="pagnNextLink"]/@href').extract_first()
         if (next_page is not None):
-            yield response.follow(next_page, callback=self.parse, cookies=self.cookies)
+            header = random.choice(self.headers)
+            yield response.follow(next_page, callback=self.parse, cookies=self.cookies, headers={"user-agent": header})
 
     def parse_product(self, response):
-        try:
-            title = response.xpath('//span[@id="productTitle"]/text()').extract_first().strip()    
-        except Exception as e:
-            with open("test.html", "w+") as f:
-                f.write(response)
-                raise e
-                # print(response)
-        
+        captcha = response.xpath('//*[@id="captchacharacters"]').extract_first()
 
-        feature_bullets = response.xpath('//*[@id="feature-bullets"]/ul/li/span')
-        temp_short_description = ""
-        for feature_bullet in feature_bullets:
-            temp_short_description = temp_short_description + removeSpaceAndStrip(feature_bullet.xpath("text()").extract_first()) + " | "
-        
-        temp_price = response.xpath('//span[@id="priceblock_ourprice"]/text()').extract_first()
-        if temp_price is not None:
-            if len(temp_price) > 5:
-                temp_price = temp_price.split(" - ")[0]
-        else:
-            temp_price = response.xpath('//*[@id="priceblock_snsprice_Based"]/span/text()').extract_first()
-            if temp_price is None:
-                temp_price = "can't get"
-        # Handle description
-        try:
-            temp_description = ''
-            e_temp_descriptions = response.xpath('//*[@id="productDescription"]/p/text()').extract()
-            # other_form_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
-            if len(e_temp_descriptions) >= 2:
-                for e_temp_description in e_temp_descriptions:
-                    temp_description = temp_description + e_temp_description + "\n"
-            elif (len(e_temp_descriptions) == 1):
-                temp_description = e_temp_descriptions[0]
-            # elif len(other_form_descriptions) > 2:
+        if (captcha is None):
+            temp_title = response.xpath('//*[@id="productTitle"]/text()').extract_first()
+            if temp_title is not None:
+                temp_title = removeSpaceAndStrip(printableString(temp_title))
+
+            # Handle description
+            temp_short_description = response.xpath('//*[@id="feature-bullets"]//*  ').extract_first()
+
+            # Handle price
+            temp_price = response.xpath('//span[@id="priceblock_ourprice"]/text()').extract_first()
+            if temp_price is not None:
+                if len(temp_price) > 5:
+                    temp_price = temp_price.split(" - ")[0]
             else:
-                e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/p/text()').extract()
-                if len(e_temp_descriptions) >= 2:
-                    for e_temp_description in e_temp_descriptions:
-                        temp_description = temp_description + e_temp_description + "\n"
-                else:
-                    e_temp_descriptions = response.xpath('//*[contains(@class, "launchpad-text-left-justify"")]/ul/li/span/text()').extract()
-                    for e_temp_description in e_temp_descriptions:
-                        temp_description = temp_description + e_temp_description + "\n"
-            
-        except Exception as e:
-            temp_description = "Nothing"
+                temp_price = response.xpath('//*[@id="priceblock_snsprice_Based"]/span/text()').extract_first()
+                if temp_price is None:
+                    temp_price = "can't get"
 
-        item = AmazonItem()
-        item["Identifier"] = self.count
-        item["Type"] = "external"
-        item["SKU"] = response.url.split("/")[-1]
-        item["Name"] = title
-        item["Published"] = "1"
-        item["IsFeatured"] = "0"
-        item["VisibilityInCatalogue"] = "visible"
-        item["ShortDescription"] = temp_short_description
-        item["Description"] = temp_description
-        item["TaxStatus"] = "taxable"
-        item["InStock"] = "100"
-        item["AllowCustomerReviews"] = "1"
-        item["Price"] = temp_price
-        item["Categories"] = "Fashion"
-        item["Tags"] = ""
-        item["Images"] = response.xpath('//*[@id="landingImage"]/@data-old-hires').extract_first()
-        item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
-        item["Position"] = "0"
+            # Handle description
+            temp_description = response.xpath('//*[@id="productDescription"]//*').extract_first()
+            if temp_description is None:
+                temp_description = "Nothing"
 
-        self.count+=1
-        notif("Success " + response.url.split("/")[-1])
-        yield item
+            # Handle SKU
+            temp_sku = response.url.split("/")[-1]
+
+            # Handle image link
+            temp_images = response.xpath('//*[@id="landingImage"]/@data-old-hires').extract_first()
+
+            # Handle external URL
+            temp_external_url = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
+
+
+            item = AmazonItem()
+            item["Identifier"] = self.count
+            item["Type"] = "external"
+            item["SKU"] = temp_sku
+            item["Name"] = temp_title
+            item["Published"] = "1"
+            item["IsFeatured"] = "0"
+            item["VisibilityInCatalogue"] = "visible"
+            item["ShortDescription"] = temp_short_description
+            item["Description"] = temp_description
+            item["TaxStatus"] = "taxable"
+            item["InStock"] = "100"
+            item["AllowCustomerReviews"] = "1"
+            item["Price"] = temp_price
+            item["Categories"] = "Fashion"
+            item["Tags"] = ""
+            item["Images"] = temp_images
+            item["ExternalURL"] = temp_external_url
+            item["Position"] = "0"
+
+            self.count += 1
+            notif("Success " + response.url.split("/")[-1])
+            yield item
+        elif response.status == 404:
+            item = AmazonItem()
+            item["Name"] = "404 Not Found"
+            item["ExternalURL"] = response.url
+            yield item
+        else:
+            item = AmazonItem()
+            item["Name"] = "CAPTCHA"
+            item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
+            yield item
