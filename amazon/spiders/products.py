@@ -62,8 +62,12 @@ class AmazonSpider(scrapy.Spider):
 
     def parse_product(self, response):
         captcha = response.xpath('//*[@id="captchacharacters"]').extract_first()
-
-        if (captcha is None):
+        if response.status == 404:
+            item = AmazonItem()
+            item["Name"] = "404 Not Found"
+            item["ExternalURL"] = response.url
+            yield item
+        elif (captcha is None):
             temp_title = response.xpath('//*[@id="productTitle"]/text()').extract_first()
             if temp_title is not None:
                 temp_title = removeSpaceAndStrip(printableString(temp_title))
@@ -118,11 +122,6 @@ class AmazonSpider(scrapy.Spider):
 
             self.count += 1
             notif("Success " + response.url.split("/")[-1])
-            yield item
-        elif response.status == 404:
-            item = AmazonItem()
-            item["Name"] = "404 Not Found"
-            item["ExternalURL"] = response.url
             yield item
         else:
             item = AmazonItem()
