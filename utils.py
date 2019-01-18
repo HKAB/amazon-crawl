@@ -23,7 +23,7 @@ def isASCIIString(string):
 	try:
 		for char in string:
 			char.decode("ascii")
-	except UnicodeDecodeError as e:
+	except Exception as e:
 		return False
 	return True
 
