@@ -14,6 +14,7 @@ class AmazonSpider(scrapy.Spider):
     name = 'amazon'
 
     count = 0
+    count_fail = 0
 
     headers = [
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
@@ -38,7 +39,6 @@ class AmazonSpider(scrapy.Spider):
 
         if (mode == Mode.KEYWORD):
             url = "https://www.amazon.com/s/ref=nb_sb_noss_2?url=search-alias%3Daps&field-keywords=" + self.keyword
-            notif(header)
             yield scrapy.Request(url=url, callback=self.parse, headers={"user-agent": header}, cookies=self.cookies)
         else:
             links = readFile(file)
@@ -53,6 +53,7 @@ class AmazonSpider(scrapy.Spider):
     def parse(self, response):
         asins = response.xpath("//*[contains(@id, 'result')]/@data-asin").extract()
         for asin in asins:
+            notif(asin)
             url_asin = "https://www.amazon.com/dp/" + asin;
             yield scrapy.Request(url=url_asin, callback=self.parse_product, headers={"user-agent": random.choice(self.headers)}, cookies=self.cookies)
         next_page = response.xpath('//*[@id="pagnNextLink"]/@href').extract_first()
@@ -63,9 +64,12 @@ class AmazonSpider(scrapy.Spider):
     def parse_product(self, response):
         captcha = response.xpath('//*[@id="captchacharacters"]').extract_first()
         if response.status == 404:
+            print("404")
             item = AmazonItem()
             item["Name"] = "404 Not Found"
+            item["Identifier"] = self.count_fail
             item["ExternalURL"] = response.url
+            self.count_fail += 1
             yield item
         elif (captcha is None):
             temp_title = response.xpath('//*[@id="productTitle"]/text()').extract_first()
@@ -104,12 +108,12 @@ class AmazonSpider(scrapy.Spider):
             item["Identifier"] = self.count
             item["Type"] = "external"
             item["SKU"] = temp_sku
-            item["Name"] = temp_title
+            item["Name"] = printableString(temp_title)
             item["Published"] = "1"
             item["IsFeatured"] = "0"
             item["VisibilityInCatalogue"] = "visible"
-            item["ShortDescription"] = temp_short_description
-            item["Description"] = temp_description
+            item["ShortDescription"] = printableString(temp_short_description)
+            item["Description"] = printableString(temp_description)
             item["TaxStatus"] = "taxable"
             item["InStock"] = "100"
             item["AllowCustomerReviews"] = "1"
@@ -126,5 +130,7 @@ class AmazonSpider(scrapy.Spider):
         else:
             item = AmazonItem()
             item["Name"] = "CAPTCHA"
+            item["Identifier"] = self.count_fail
             item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
+            self.count_fail += 1
             yield item
