@@ -66,8 +66,8 @@ class AmazonSpider(scrapy.Spider):
         if response.status == 404:
             print("404")
             item = AmazonItem()
-            item["Name"] = "404 Not Found"
             item["Identifier"] = self.count_fail
+            item["Name"] = "404 Not Found"
             item["ExternalURL"] = response.url
             self.count_fail += 1
             yield item
@@ -129,8 +129,8 @@ class AmazonSpider(scrapy.Spider):
             yield item
         else:
             item = AmazonItem()
-            item["Name"] = "CAPTCHA"
             item["Identifier"] = self.count_fail
+            item["Name"] = "CAPTCHA"
             item["ExternalURL"] = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
             self.count_fail += 1
             yield item

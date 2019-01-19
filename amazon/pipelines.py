@@ -32,11 +32,19 @@ class AmazonPipeline(object):
 		with open('%s_items.csv' % spider.name, 'w+b') as f_write:
 			writer = csv.writer(f_write)
 			writer.writerows(data)
+
+		fields_fail = ["Identifier", "Name", "External URL"]
+		with open('%s_items_fail.csv' % spider.name, 'r') as f_read_fail:
+			reader = csv.reader(f_read_fail)
+			data = list(reader)
+			if len(data) > 0:
+				data[0] = fields_fail
 		# https://stackoverflow.com/questions/3191528/csv-in-python-adding-an-extra-carriage-return-on-windows
 		with open('%s_items_fail.csv' % spider.name, 'w+b') as f_write_fail:
 			writer = csv.writer(f_write_fail)
 			writer.writerows(self.item_fail)
 
+		f_read_fail.close()
 		f_read.close()
 		f_write.close()
 		f_write_fail.close()
