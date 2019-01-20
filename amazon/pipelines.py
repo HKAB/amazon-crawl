@@ -6,7 +6,7 @@
 # See: https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from scrapy.settings import Settings
 from scrapy.exporters import CsvItemExporter
-from utils import isASCIIString
+from utils import isASCIIString, notif
 
 class AmazonPipeline(object):
 	def __init__(self):
@@ -50,9 +50,16 @@ class AmazonPipeline(object):
 		f_write_fail.close()
 	def process_item(self, item, spider):
 		max_product = spider.settings.get("CLOSESPIDER_ITEMCOUNT")
-		if int(item["Identifier"]) < int(max_product):
+		# notif("max_product: " + str(max_product))
+		if max_product != 0:
+			if int(item["Identifier"]) < int(max_product):
+				if (not isASCIIString(item["Name"])) or (item["Name"] == "CAPTCHA") or (item["Name"] == "404 Not Found") or (item["Price"] == "can't get"):
+					self.item_fail.append(item.values())
+				else:
+					self.exporter.export_item(item)
+		else:
 			if (not isASCIIString(item["Name"])) or (item["Name"] == "CAPTCHA") or (item["Name"] == "404 Not Found") or (item["Price"] == "can't get"):
-				self.item_fail.append(item.values())
+					self.item_fail.append(item.values())
 			else:
 				self.exporter.export_item(item)
 		return item
