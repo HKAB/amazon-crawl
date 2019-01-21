@@ -101,7 +101,7 @@ class AmazonSpider(scrapy.Spider):
             temp_images = response.xpath('//*[@id="landingImage"]/@data-old-hires').extract_first()
 
             # Handle external URL
-            temp_external_url = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "?tag=vttgreat-20"
+            temp_external_url = "https://www.amazon.com/dp/" + response.url.split("/")[-1] + "/?tag=vttgreat-20"
 
 
             item = AmazonItem()
