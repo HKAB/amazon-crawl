@@ -22,7 +22,7 @@ class AmazonPipeline(object):
 		file = self.files.pop(spider)
 		file.close()
 		import csv
-		fields = ["Identifier", "Type", "SKU", "Name", "Published", "Is Featured", "Visibility In Catalogue", "Short Description", "Description", "Tax tatus", "In Stock", "Allow Customer Reviews", "Price", "Categories", "Tags", "Images", "External URL", "Position"]
+		fields = ["Identifier", "Type", "SKU", "Name", "Published", "Is Featured", "Visibility In Catalogue", "Short Description", "Description", "Tax tatus", "In Stock", "Allow Customer Reviews", "Price", "Categories", "Tags", "Meta: fifu_image_url", "External URL", "Position"]
 		with open('%s_items.csv' % spider.name, 'r') as f_read:
 			reader = csv.reader(f_read)
 			data = list(reader)
